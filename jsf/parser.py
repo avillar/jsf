@@ -55,6 +55,8 @@ class JSF:
 
     def __parse_primitive(self, name: str, path: str, schema: Dict[str, Any]) -> PrimativeTypes:
         item_type, is_nullable = self.__is_field_nullable(schema)
+        if not item_type:
+            item_type = random.choice(['string', 'number', 'boolean'])
         cls = Primitives.get(item_type)
         return cls.from_dict({"name": name, "path": path, "is_nullable": is_nullable, **schema})
 
@@ -124,6 +126,28 @@ class JSF:
     def __parse_definition(self, name: str, path: str, schema: Dict[str, Any]) -> AllTypes:
         self.base_state["__all_json_paths__"].append(path)
         item_type, is_nullable = self.__is_field_nullable(schema)
+
+        if not schema:
+            # Empty schema, fake a primitive
+            random_type = random.choice(['object', 'array', 'primitive'])
+            if random_type == 'object':
+                fake = Faker()
+                fake_schema = {
+                    "type": "object",
+                    "properties": {p: {"type": "string"} for p in fake.pylist(5, value_types=str)}
+                }
+                return self.__parse_object(name, path, fake_schema)
+            elif random_type == 'array':
+                fake_schema = {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+                return self.__parse_array(name, path, fake_schema)
+            else:
+                return self.__parse_primitive(name, path, schema)
+
         if "const" in schema:
             schema["enum"] = [schema["const"]]
 
